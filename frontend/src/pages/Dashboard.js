@@ -51,6 +51,17 @@ const Dashboard = () => {
     navigate(`/repo/${repo.owner.login}/${repo.name}`);
   };
 
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    // Check if search query is in format "owner/repo"
+    if (searchQuery.includes('/')) {
+      const [owner, repo] = searchQuery.split('/');
+      if (owner && repo) {
+        navigate(`/repo/${owner.trim()}/${repo.trim()}`);
+      }
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -100,19 +111,26 @@ const Dashboard = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search Bar */}
         <div className="mb-8">
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={20}
-            />
-            <input
-              type="text"
-              placeholder="Search repositories..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <form onSubmit={handleSearchSubmit}>
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={20}
+              />
+              <input
+                type="text"
+                placeholder="Search your repos or enter 'owner/repo' (e.g., facebook/react)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            {searchQuery.includes('/') && (
+              <p className="mt-2 text-sm text-blue-400">
+                Press Enter to analyze {searchQuery}
+              </p>
+            )}
+          </form>
         </div>
 
         {/* Repository List */}

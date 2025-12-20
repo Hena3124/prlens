@@ -6,8 +6,8 @@ import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import RepositoryPage from './pages/RepositoryPage';
 import './App.css';
+import TestPage from './pages/TestPage';
 
-// Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
@@ -27,6 +27,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/test" element={<TestPage />} />
       <Route
         path="/dashboard"
         element={

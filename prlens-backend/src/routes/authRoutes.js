@@ -18,6 +18,13 @@ router.get('/github', authController.initiateGitHubOAuth);
 router.get('/github/callback', authController.handleGitHubCallback);
 
 /**
+ * @route   POST /api/auth/exchange
+ * @desc    Swap a single-use login code for the access token
+ * @access  Public
+ */
+router.post('/exchange', authController.exchangeLoginCode);
+
+/**
  * @route   GET /api/auth/verify
  * @desc    Verify access token
  * @access  Private

@@ -3,6 +3,8 @@
  * Calculates risk score and health indicators for pull requests
  */
 
+const { hasFullDetails } = require('./prEnrichment');
+
 class RiskCalculator {
   /**
    * Calculate comprehensive risk score for a PR
@@ -10,6 +12,14 @@ class RiskCalculator {
    * @returns {Object} - Risk analysis with score and factors
    */
   static calculateRiskScore(pr) {
+    // The list endpoint omits size and comment fields. Scoring such an object
+    // would silently rate it as maximally risky, so refuse instead.
+    if (!hasFullDetails(pr)) {
+      throw new Error(
+        `PR #${pr.number} is missing size/comment fields; fetch it from /pulls/{number} before scoring`
+      );
+    }
+
     const factors = {
       size: this.calculateSizeFactor(pr),
       complexity: this.calculateComplexityFactor(pr),
@@ -97,7 +107,6 @@ class RiskCalculator {
    * Old PRs without updates are risky
    */
   static calculateStalenessFactor(pr) {
-    const created = new Date(pr.created_at);
     const updated = new Date(pr.updated_at);
     const now = new Date();
     

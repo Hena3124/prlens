@@ -41,7 +41,7 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   getAuthUrl: () => api.get('/api/auth/github'),
-  handleCallback: (code) => api.get(`/api/auth/github/callback?code=${code}`),
+  exchangeLoginCode: (loginCode) => api.post('/api/auth/exchange', { login_code: loginCode }),
   verifyToken: () => api.get('/api/auth/verify'),
   logout: () => api.post('/api/auth/logout'),
 };

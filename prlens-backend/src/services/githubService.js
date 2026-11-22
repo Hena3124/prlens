@@ -1,5 +1,9 @@
 const axios = require('axios');
 const config = require('../config/config');
+const { enrichPullRequests, DetailCache } = require('../utils/prEnrichment');
+
+// Full PR objects, keyed by repo, number and updated_at (see prEnrichment.js)
+const detailCache = new DetailCache();
 
 /**
  * GitHub Service
@@ -98,6 +102,26 @@ class GitHubService {
     } catch (error) {
       console.error('Error getting PRs:', error.response?.data || error.message);
       throw new Error('Failed to get pull requests');
+    }
+  }
+
+  /**
+   * Get pull requests with the fields the risk model needs.
+   * The list endpoint omits additions, deletions, changed_files, comments and
+   * review_comments, so each PR is fetched in full (6 at a time, cached).
+   */
+  static async getPullRequestsWithDetails(accessToken, owner, repo, state = 'all', perPage = 50) {
+    const prs = await this.getRepoPullRequests(accessToken, owner, repo, state, perPage);
+    const client = this.createClient(accessToken);
+    try {
+      return await enrichPullRequests(
+        prs,
+        async (number) => (await client.get(`/repos/${owner}/${repo}/pulls/${number}`)).data,
+        { owner, repo, cache: detailCache, concurrency: 6 }
+      );
+    } catch (error) {
+      console.error('Error getting PR details:', error.response?.data || error.message);
+      throw new Error('Failed to get pull request details');
     }
   }
 

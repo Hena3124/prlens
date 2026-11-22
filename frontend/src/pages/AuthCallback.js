@@ -1,38 +1,37 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { authAPI } from '../services/api';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
+  // A login code can only be redeemed once; React StrictMode runs effects
+  // twice in development, so make sure we only try once.
+  const started = useRef(false);
 
   useEffect(() => {
-    const handleCallback = () => {
-      const token = searchParams.get('token');
-      const userParam = searchParams.get('user');
+    if (started.current) return;
+    started.current = true;
 
-      console.log('AuthCallback - token:', token ? 'present' : 'missing');
-      console.log('AuthCallback - user:', userParam ? 'present' : 'missing');
+    const loginCode = searchParams.get('login_code');
+    if (!loginCode) {
+      navigate('/login?error=no_token');
+      return;
+    }
 
-      if (token && userParam) {
-        try {
-          const user = JSON.parse(decodeURIComponent(userParam));
-          console.log('Parsed user:', user);
-          login(token, user);
-          navigate('/dashboard');
-        } catch (error) {
-          console.error('Error parsing user data:', error);
-          navigate('/login?error=auth_failed&message=' + encodeURIComponent('Failed to parse user data'));
-        }
-      } else {
-        console.error('Missing token or user param');
-        navigate('/login?error=no_token');
-      }
-    };
-
-    handleCallback();
+    authAPI
+      .exchangeLoginCode(loginCode)
+      .then(({ data }) => {
+        login(data.token, data.user);
+        // Drop the code from the address bar and history.
+        navigate('/dashboard', { replace: true });
+      })
+      .catch(() => {
+        navigate('/login?error=auth_failed&message=' + encodeURIComponent('Login link expired. Please sign in again.'));
+      });
   }, [searchParams, login, navigate]);
 
   return (

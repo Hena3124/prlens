@@ -1,9 +1,15 @@
 const GitHubService = require('../services/githubService');
 const config = require('../config/config');
+const { loginCodes } = require('../utils/loginCodes');
 
 /**
  * Authentication Controller
  * Handles GitHub OAuth flow
+ *
+ * The access token is never put in a URL or written to the logs. After
+ * GitHub redirects back, the token is parked under a single-use login code
+ * (valid for 60 seconds) and only the code travels to the frontend, which
+ * exchanges it with POST /api/auth/exchange.
  */
 
 /**
@@ -11,8 +17,6 @@ const config = require('../config/config');
  */
 const initiateGitHubOAuth = (req, res) => {
   const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${config.github.clientId}&scope=repo,read:user&redirect_uri=${encodeURIComponent(config.github.callbackUrl)}`;
-  
-  console.log('Redirecting to GitHub OAuth:', githubAuthUrl);
   res.redirect(githubAuthUrl);
 };
 
@@ -21,46 +25,60 @@ const initiateGitHubOAuth = (req, res) => {
  */
 const handleGitHubCallback = async (req, res) => {
   try {
-    console.log('Callback received with query:', req.query);
     const { code } = req.query;
 
     if (!code) {
-      console.error('No code provided in callback');
       return res.redirect(`${config.frontend.url}/login?error=no_code`);
     }
 
-    console.log('Exchanging code for token...');
     // Exchange code for access token
     const accessToken = await GitHubService.getAccessToken(code);
 
     if (!accessToken) {
-      console.error('Failed to get access token');
       return res.redirect(`${config.frontend.url}/login?error=no_token`);
     }
 
-    console.log('Got access token, fetching user info...');
     // Get user information
     const user = await GitHubService.getAuthenticatedUser(accessToken);
-    console.log('User authenticated:', user.login);
 
-    // Redirect to frontend with token and user data
-    const userData = encodeURIComponent(JSON.stringify({
-      id: user.id,
-      login: user.login,
-      name: user.name,
-      email: user.email,
-      avatarUrl: user.avatar_url,
-      bio: user.bio,
-      location: user.location,
-    }));
+    const loginCode = loginCodes.issue({
+      token: accessToken,
+      user: {
+        id: user.id,
+        login: user.login,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatar_url,
+        bio: user.bio,
+        location: user.location,
+      },
+    });
 
-    const redirectUrl = `${config.frontend.url}/auth/callback?token=${accessToken}&user=${userData}`;
-    console.log('Redirecting to frontend:', redirectUrl);
-    res.redirect(redirectUrl);
+    res.redirect(`${config.frontend.url}/auth/callback?login_code=${loginCode}`);
   } catch (error) {
-    console.error('GitHub callback error:', error);
+    console.error('GitHub callback error:', error.message);
     res.redirect(`${config.frontend.url}/login?error=auth_failed&message=${encodeURIComponent(error.message)}`);
   }
+};
+
+/**
+ * Exchange a single-use login code for the access token and user
+ */
+const exchangeLoginCode = (req, res) => {
+  const payload = loginCodes.redeem(req.body && req.body.login_code);
+
+  if (!payload) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid or expired login code',
+    });
+  }
+
+  res.json({
+    success: true,
+    token: payload.token,
+    user: payload.user,
+  });
 };
 
 /**
@@ -103,6 +121,7 @@ const logout = (req, res) => {
 module.exports = {
   initiateGitHubOAuth,
   handleGitHubCallback,
+  exchangeLoginCode,
   verifyToken,
   logout,
 };

@@ -17,7 +17,7 @@ const getRepositoryPullRequests = async (req, res, next) => {
     const { state = 'all', per_page = 50 } = req.query;
 
     // Fetch PRs from GitHub
-    const prs = await GitHubService.getRepoPullRequests(accessToken, owner, repo, state, per_page);
+    const prs = await GitHubService.getPullRequestsWithDetails(accessToken, owner, repo, state, per_page);
 
     // Calculate risk for each PR
     const prsWithRisk = prs.map(pr => {
@@ -142,7 +142,7 @@ const getRepositoryAnalytics = async (req, res, next) => {
     const { per_page = 100 } = req.query;
 
     // Fetch all PRs for analytics
-    const prs = await GitHubService.getRepoPullRequests(accessToken, owner, repo, 'all', per_page);
+    const prs = await GitHubService.getPullRequestsWithDetails(accessToken, owner, repo, 'all', per_page);
 
     // Calculate analytics
     const analytics = AnalyticsCalculator.calculateRepoAnalytics(prs);
@@ -173,7 +173,7 @@ const getTopRiskyPRs = async (req, res, next) => {
     const { limit = 10 } = req.query;
 
     // Fetch open PRs
-    const prs = await GitHubService.getRepoPullRequests(accessToken, owner, repo, 'open', 100);
+    const prs = await GitHubService.getPullRequestsWithDetails(accessToken, owner, repo, 'open', 100);
 
     // Calculate risk and sort
     const prsWithRisk = prs
